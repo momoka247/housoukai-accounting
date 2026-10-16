@@ -1,0 +1,7 @@
+name = "housoukai-line-gateway"
+main = "worker.mjs"
+compatibility_date = "2026-10-16"
+workers_dev = true
+# 有料プラン・DB・AI・ストレージは使用しない。
+# 以下はCloudflareのSecrets画面で登録。GitHubへ値を書かない。
+# LINE_CHANNEL_SECRET / GATEWAY_SHARED_SECRET / APPS_SCRIPT_URL

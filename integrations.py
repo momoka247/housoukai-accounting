@@ -40,6 +40,12 @@ def line_push(target, messages, retry_key):
         raise
 
 
+def line_reply(reply_token, messages):
+    return request('https://api.line.me/v2/bot/message/reply',
+                   {'replyToken': reply_token, 'messages': messages},
+                   {'Authorization': 'Bearer ' + os.environ['LINE_CHANNEL_ACCESS_TOKEN']})
+
+
 def line_image(ident):
     url = 'https://api-data.line.me/v2/bot/message/' + urllib.parse.quote(ident, safe='') + '/content'
     with urllib.request.urlopen(urllib.request.Request(url, headers={

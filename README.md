@@ -1,7 +1,11 @@
 # 放送会 会計LINE
 
-LINE公式アカウントから、申請手順の確認・利用明細の確認登録・残高照会・支払予定の確認と完了操作を行うPythonアプリです。
-ローカル実装済みです。LINE・Googleの認証情報とHTTPS公開先を設定するまでは、本番LINEへの返信・写真OCR・Gmail同期は動作しません。
+LINE公式アカウントから、申請手順の確認・利用明細の確認登録・残高照会・支払予定の確認と完了操作を行うアプリです。
+
+**月額0円を目指す運用は [無料版の設定手順](free/README.md) を使ってください。** Google Apps Script・Drive・Cloudflare Workers Freeを使用し、RenderやCloud Visionの課金設定は不要です。通常のLINE返信はReply API、定期通知・写真結果などのPushは月180通を上限に止めます。無料枠の上限があります。
+無料版のコードは `free/Core.gs` と `free/Code.gs`、LINE署名検証用Workerは `free/gateway/worker.mjs` です。本番接続はアカウント設定後に確認します。
+
+以下は、従来のPython版を使う場合の説明です。無料版を設定する場合は、以下のGoogle Cloud OAuth・Cloud Vision・Renderの設定を進める必要はありません。
 
 ## 会計ルール
 
@@ -120,6 +124,7 @@ docker run --env-file .env -p 8080:8080 -v housoukai-data:/app/data housoukai-ac
 
 ```sh
 python -m unittest discover -s tests -v
+node --test tests/free.test.mjs
 ```
 
 会計計算、内部振替、手数料合算、三菱UFJの入金額表記、確認操作の権限・重複、通知停止、署名検証、45件の取引を含むExcel拡張を検証します。

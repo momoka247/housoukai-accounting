@@ -135,6 +135,22 @@ class AccountingTests(unittest.TestCase):
         self.store.confirm(ident, 'Utest')
         self.assertEqual(self.store.ledger()[-1], ('2027-04-02', '支．通信費', 0, 1110))
 
+    def test_normal_response_uses_reply_without_push(self):
+        self.bot.handle({'source': {'type': 'user', 'userId': 'Utest'}, 'type': 'message',
+                         'webhookEventId': 'reply-test', 'replyToken': 'test-token',
+                         'message': {'type': 'text', 'text': '事前申請'}})
+        with patch('bot.line_reply') as reply, patch('bot.line_push') as push:
+            self.bot.flush()
+            reply.assert_called_once()
+            push.assert_not_called()
+
+    def test_expired_reply_does_not_fall_back_to_push(self):
+        import urllib.error
+        self.bot.queue('Utest', [{'type': 'text', 'text': 'test'}], 'expired', 'expired-token')
+        with patch('bot.line_reply', side_effect=urllib.error.HTTPError('https://api.line.me', 400, 'invalid token', {}, None)), patch('bot.line_push') as push:
+            self.bot.flush()
+            push.assert_not_called()
+
     def test_export_grows_and_preserves_blank_columns(self):
         for i in range(45):
             self.register('transaction', self.tx(金額=100, 手数料=10))

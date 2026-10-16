@@ -3,10 +3,11 @@ import json
 import os
 import re
 import uuid
+import urllib.error
 from datetime import datetime, date
 
 from accounting import ACCOUNTS, JST, CATEGORIES
-from integrations import line_image, ocr, receipt_draft, gmail_candidates, line_push, suggest_category
+from integrations import line_image, ocr, receipt_draft, gmail_candidates, line_push, line_reply, suggest_category
 
 GUIDES = {
     '事後申請': '① 団体口座または自費で購入\n② ご利用明細と購入品の請求書を学士（1号館）に提出\n③ 金額確認後、公金口座の通帳を受領\n④ 公金口座から団体口座へ送金\n⑤ 16:30までに学士に公金口座の通帳を返却',
@@ -44,9 +45,9 @@ class Bot:
         self.store = store
         self.exporter = exporter
 
-    def queue(self, target, messages, key=None):
+    def queue(self, target, messages, key=None, reply_token=None):
         key = key or uuid.uuid4().hex
-        body = json.dumps({'target': target, 'messages': messages}, ensure_ascii=False)
+        body = json.dumps({'target': target, 'messages': messages, 'reply_token': reply_token}, ensure_ascii=False)
         with self.store.db:
             self.store.db.execute('INSERT OR IGNORE INTO outbox VALUES(?,?,0)', (key, body))
 
@@ -72,7 +73,8 @@ class Bot:
             message = str(e) if isinstance(e, ValueError) and not isinstance(e, json.JSONDecodeError) else '入力項目・JSON形式を確認してください。「ヘルプ」で入力例を表示します。'
             messages = [text_message(message)]
         if messages:
-            self.queue(target, messages, 'event:' + event['webhookEventId'])
+            if event.get('replyToken'):
+                self.queue(target, messages, 'event:' + event['webhookEventId'], event['replyToken'])
 
     def respond(self, event, user):
         if event['type'] == 'postback':
@@ -230,6 +232,14 @@ class Bot:
                     continue
             b = json.loads(row['body'])
             # LINE retry key is stable even after process restart.
-            line_push(b['target'], b['messages'], str(uuid.uuid5(uuid.NAMESPACE_URL, row['id'])))
+            if b.get('reply_token'):
+                try:
+                    line_reply(b['reply_token'], b['messages'])
+                except urllib.error.HTTPError as error:
+                    if error.code != 400:
+                        raise
+                    # 期限切れ・使用済みtokenを有料枠のPushへ切り替えない。
+            else:
+                line_push(b['target'], b['messages'], str(uuid.uuid5(uuid.NAMESPACE_URL, row['id'])))
             with self.store.db:
                 self.store.db.execute('UPDATE outbox SET sent=1 WHERE id=?', (row['id'],))

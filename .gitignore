@@ -12,3 +12,7 @@ qa/
 build_template.mjs
 qa_sample.py
 qa_verify.mjs
+.dev.vars*
+.wrangler/
+.clasp.json
+free/private-settings*
