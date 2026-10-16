@@ -1,0 +1,8 @@
+*
+!accounting.py
+!integrations.py
+!bot.py
+!excel_export.py
+!server.py
+!categories.json
+!templates/ledger.xlsx

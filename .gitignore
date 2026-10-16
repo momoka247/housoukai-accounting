@@ -1,0 +1,14 @@
+.env
+data/
+outputs/
+__pycache__/
+*.pyc
+node_modules/
+credentials*.json
+token*.json
+*.db*
+qa/
+*.inspect.ndjson
+build_template.mjs
+qa_sample.py
+qa_verify.mjs
