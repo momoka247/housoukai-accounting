@@ -1,7 +1,12 @@
 name = "housoukai-line-gateway"
+account_id = "102be3108c11db9bd7833e00689466b1"
 main = "worker.mjs"
 compatibility_date = "2026-10-16"
 workers_dev = true
+keep_vars = true
 # 有料プラン・DB・AI・ストレージは使用しない。
-# 以下はCloudflareのSecrets画面で登録。GitHubへ値を書かない。
-# LINE_CHANNEL_SECRET / GATEWAY_SHARED_SECRET / APPS_SCRIPT_URL
+# 鍵はCloudflareのSecrets画面またはWranglerで登録。値はGitHubへ書かない。
+# LINE_CHANNEL_SECRET / GATEWAY_SHARED_SECRET
+
+[vars]
+APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxugS9VqxW1i7ES8eFHGnSKWMV5lCF7WbyhUN_uC-6O3zEbQWfjp0d2ekFPYP6nsmkG/exec"
