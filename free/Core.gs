@@ -138,6 +138,7 @@ var AccountingCore = (function () {
       手数料:singleMoney(s,'(?:振込手数料|手数料)'),残高:singleMoney(s,'(?:お取引後残高|お取引後の残高|残高)'),内部振替:null,科目:null,内容:null,_写真明細:true,_入金額表記:income!==null&&expense===null};
   }
   const HELP='放送会 会計サポート\n事前申請／事後申請／団体口座／公金口座\n団体口座 残高／公金口座 残高\n写真を送る→読取候補を確認→登録\n科目一覧／未払い／確認待ち／会計ファイル／利用状況\n\n開始残高 {"日付":"2027-04-01","団体口座":0,"公金口座":0}\n取引 {"日付":"2027-04-02","口座":"団体口座","方向":"支出","金額":1000,"手数料":110,"残高":0,"内部振替":false,"科目":"支．消耗品費","内容":null}\n支払登録 {"会社":"会社名","金額":1000,"期限":"2027-04-10"}\n例の日付・金額は実際の値に置き換えてください。';
+  const USAGE='放送会 会計アプリの使い方\n\n次の言葉をそのまま送ってください。\n\n「事前申請」→ 購入前に申請する手順\n「事後申請」→ 購入後に申請する手順\n「団体口座」→ 三菱UFJ銀行での振込手順\n「公金口座」→ みずほ銀行から団体口座への振込手順\n\n「団体口座 残高」→ 団体口座の登録済み残高\n「公金口座 残高」→ 公金口座の登録済み残高\n\n明細の写真を送る → 読み取り結果を確認して会計ファイルに登録\n「科目一覧」→ 会計科目の一覧\n「確認待ち」→ 登録前の確認・修正\n「未払い」→ 支払予定と「完了」ボタン\n「会計ファイル」→ Excelファイルのリンク\n\n振込が終わったら、対象の通知の「完了」を押してください。\n入力方法の詳しい例は「ヘルプ」と送ってください。';
   function respond(db,event,user,config,ctx) {
     if(event.type==='postback') {
       const match=/^(confirm|cancel|done):([a-f0-9]{12})$/.exec(event.postback.data);
@@ -155,6 +156,7 @@ var AccountingCore = (function () {
     if(event.type!=='message') return [];
     if(event.message.type!=='text') return [text('文字または利用明細の写真を送ってください。')];
     const s=event.message.text.trim(), compact=s.replace(/[\s　]+/g,'');
+    if(compact==='使い方') return [text(USAGE)];
     if(GUIDES[compact]) return [text(GUIDES[compact])];
     if(compact==='公金口座') return [text(config.TRANSFER_BRANCH&&config.TRANSFER_ACCOUNT?'みずほ銀行\n①「通帳記入」\n②「お振込み」\n③「三菱UFJ銀行 '+config.TRANSFER_BRANCH+'」\n④ 口座番号（'+config.TRANSFER_ACCOUNT+'）\n⑤ 暗証番号は会計に聞く\n⑥ 金額入力\n⑦ ご利用明細書発行（金額印字）\n⑧「通帳記入」':'振込先設定を会計担当者に確認してください。')];
     for(const a of ACCOUNTS) if(compact===a+'残高') {const v=balance(db,a);return [text(v?a+': '+v[0].toLocaleString('ja-JP')+'円\n明細日: '+v[1]+'\n登録済み明細の残高です。':'開始残高が未登録です。')];}

@@ -120,6 +120,14 @@ class AccountingTests(unittest.TestCase):
         self.assertTrue(valid_signature(body, signature, 'secret'))
         self.assertFalse(valid_signature(body + b' ', signature, 'secret'))
 
+    def test_usage_guide_does_not_change_accounting(self):
+        before = self.store.ledger()
+        messages = self.bot.respond({'type': 'message', 'message': {'type': 'text', 'text': '使い方'}}, 'Utest')
+        self.assertEqual(len(messages), 1)
+        self.assertIn('「事前申請」→ 購入前に申請する手順', messages[0]['text'])
+        self.assertIn('「未払い」→ 支払予定と「完了」ボタン', messages[0]['text'])
+        self.assertEqual(self.store.ledger(), before)
+
     def test_category_only_when_unambiguous(self):
         self.assertEqual(suggest_category('切手代', '支出'), '支．通信費')
         self.assertEqual(suggest_category('部費', '収入'), '収．部費')

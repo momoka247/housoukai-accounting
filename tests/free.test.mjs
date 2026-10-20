@@ -24,6 +24,13 @@ function fixture() {
 }
 const transaction=patch=>({日付:'2027-04-02',口座:'団体口座',方向:'支出',金額:1000,手数料:110,残高:8890,内部振替:false,科目:'支．消耗品費',...patch});
 
+test('使い方は1通の説明書を返し会計データを操作しない',()=>{
+  const messages=core.respond({}, {type:'message',message:{type:'text',text:' 使い方　'}},'user',{},{});
+  assert.equal(messages.length,1);assert.equal(messages[0].type,'text');
+  for(const word of ['事前申請','事後申請','団体口座 残高','公金口座 残高','写真','科目一覧','確認待ち','未払い','会計ファイル','完了','ヘルプ'])assert.ok(messages[0].text.includes(word));
+  assert.ok(messages[0].text.length<1000);
+});
+
 test('無料版の科目は元の全科目と一致する',()=>{
   assert.deepEqual(plain(core.CATEGORIES),JSON.parse(fs.readFileSync(new URL('../categories.json',import.meta.url),'utf8')));
 });
