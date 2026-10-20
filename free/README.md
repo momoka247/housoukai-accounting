@@ -12,6 +12,12 @@ Render、Cloud Vision API、有料Workers、独自ドメインは契約しませ
 - LINE：通常の返信はReply API。支払リマインド・Gmail候補・写真結果だけPush API。
 
 設定には放送会のGoogleアカウントを使います。作成したDriveファイルは一般公開しません。
+
+## 閲覧と編集の権限
+
+「事後申請」「事前申請」「団体口座」「公金口座」「団体口座 残高」「公金口座 残高」「使い方」は全員が利用できます。グループ内でも公開コマンドは利用できます。
+金額・日付・開始残高の登録、修正、取消、写真の登録、支払完了操作、確認待ち・未払い・科目一覧・Excelの取得などは、`LINE_ALLOWED_USER_IDS` に指定された会計担当者だけが利用できます。担当者の管理操作は個別トーク、または `LINE_NOTIFICATION_TARGET` に設定した会計用グループで行います。
+担当者を追加するときはユーザーIDをカンマ区切りで追記します。一般の閲覧者はユーザーIDの登録不要です。公開する残高は、銀行への直接照会ではなく登録済み明細の残高です。
 Cloudflareを挟むのは、Apps ScriptのdoPostがLINE署名ヘッダーを直接検証できないためです。WorkerでLINEの原文署名を検証し、WorkerとApps Script間も共通秘密鍵によるHMACで認証します。Apps ScriptのURLだけをLINEのWebhookに設定しないでください。
 
 ## 1. Apps Scriptのプロジェクトを作成

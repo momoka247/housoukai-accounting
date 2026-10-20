@@ -80,9 +80,16 @@ function doPost(e) {
     const db=new Database_(),ctx=context_();
     for(const event of body.events) {
       const source=event.source||{},user=source.userId;
-      if(!(c.LINE_ALLOWED_USER_IDS||'').split(',').map(x=>x.trim()).includes(user))continue;
       const target=source.groupId||source.roomId||user;
-      if(source.type!=='user'&&target!==c.LINE_NOTIFICATION_TARGET)continue;
+      if(!target)continue;
+      const publicEvent=AccountingCore.isPublicEvent(event);
+      const editor=AccountingCore.isEditor(user,c);
+      if(!publicEvent&&(!editor||(source.type!=='user'&&target!==c.LINE_NOTIFICATION_TARGET))) {
+        if(event.replyToken&&(event.type==='message'||event.type==='postback')) {
+          lineCall_('/message/reply',{replyToken:event.replyToken,messages:[AccountingCore.text('この操作は指定の会計担当者のみ利用できます。担当者は個別トークまたは設定済みの会計用グループで操作してください。\n\n全員が使える機能は「使い方」と送ると確認できます。')]});
+        }
+        continue;
+      }
       if(typeof event.webhookEventId!=='string'||event.webhookEventId.length>150)continue;
       // 操作の保存と返信を分離。再送で会計の登録を繰り返さない。
       let saved=db.get('event',event.webhookEventId);

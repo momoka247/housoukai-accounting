@@ -2,6 +2,14 @@
 var AccountingCore = (function () {
   'use strict';
   const ACCOUNTS = ['団体口座', '公金口座'];
+  const PUBLIC_COMMANDS = ['事後申請','事前申請','団体口座','公金口座','団体口座残高','公金口座残高','使い方'];
+  function isPublicEvent(event) {
+    return event.type==='message'&&event.message&&event.message.type==='text'&&
+      PUBLIC_COMMANDS.includes(event.message.text.trim().replace(/[\s　]+/g,''));
+  }
+  function isEditor(user,config) {
+    return !!user&&(config.LINE_ALLOWED_USER_IDS||'').split(',').map(s=>s.trim()).filter(Boolean).includes(user);
+  }
   const CATEGORIES = [
     '収．前年度繰越金/団体口座','収．前年度繰越金/公金口座','収．援助金/分配金','収．援助金/学事援助金','収．援助金/イベント援助金','収．援助金/後援会補助','収．援助金/そのほか',
     '収．顕彰・奨励/五島育英基金','収．顕彰・奨励/学内表彰','収．顕彰・奨励/学外表彰','収．顕彰・奨励/強化指定','収．顕彰・奨励/そのほか','収．部費','収．イベント売上金/学祭売上金','収．イベント売上金/個別イベント売上金','収．広告収入','収．謝金','収．寄付金','収．受取利息','収．雑収入',
@@ -138,7 +146,7 @@ var AccountingCore = (function () {
       手数料:singleMoney(s,'(?:振込手数料|手数料)'),残高:singleMoney(s,'(?:お取引後残高|お取引後の残高|残高)'),内部振替:null,科目:null,内容:null,_写真明細:true,_入金額表記:income!==null&&expense===null};
   }
   const HELP='放送会 会計サポート\n事前申請／事後申請／団体口座／公金口座\n団体口座 残高／公金口座 残高\n写真を送る→読取候補を確認→登録\n科目一覧／未払い／確認待ち／会計ファイル／利用状況\n\n開始残高 {"日付":"2027-04-01","団体口座":0,"公金口座":0}\n取引 {"日付":"2027-04-02","口座":"団体口座","方向":"支出","金額":1000,"手数料":110,"残高":0,"内部振替":false,"科目":"支．消耗品費","内容":null}\n支払登録 {"会社":"会社名","金額":1000,"期限":"2027-04-10"}\n例の日付・金額は実際の値に置き換えてください。';
-  const USAGE='放送会 会計アプリの使い方\n\n次の言葉をそのまま送ってください。\n\n「事前申請」→ 購入前に申請する手順\n「事後申請」→ 購入後に申請する手順\n「団体口座」→ 三菱UFJ銀行での振込手順\n「公金口座」→ みずほ銀行から団体口座への振込手順\n\n「団体口座 残高」→ 団体口座の登録済み残高\n「公金口座 残高」→ 公金口座の登録済み残高\n\n明細の写真を送る → 読み取り結果を確認して会計ファイルに登録\n「科目一覧」→ 会計科目の一覧\n「確認待ち」→ 登録前の確認・修正\n「未払い」→ 支払予定と「完了」ボタン\n「会計ファイル」→ Excelファイルのリンク\n\n振込が終わったら、対象の通知の「完了」を押してください。\n入力方法の詳しい例は「ヘルプ」と送ってください。';
+  const USAGE='放送会 会計アプリの使い方\n\n【全員が使える機能】\n次の言葉をそのまま送ってください。\n\n「事前申請」→ 購入前に申請する手順\n「事後申請」→ 購入後に申請する手順\n「団体口座」→ 三菱UFJ銀行での振込手順\n「公金口座」→ みずほ銀行から団体口座への振込手順\n「団体口座 残高」→ 団体口座の登録済み残高\n「公金口座 残高」→ 公金口座の登録済み残高\n\n【指定の会計担当者のみ】\n明細の写真を送る → 読み取り結果を確認して会計ファイルに登録\n「科目一覧」→ 会計科目の一覧\n「確認待ち」→ 登録前の確認・修正\n「未払い」→ 支払予定と「完了」ボタン\n「会計ファイル」→ Excelファイルのリンク\n\n金額・日付の登録や変更、支払完了の操作は担当者のみ行えます。\n担当者向けの詳しい入力例は「ヘルプ」と送ってください。';
   function respond(db,event,user,config,ctx) {
     if(event.type==='postback') {
       const match=/^(confirm|cancel|done):([a-f0-9]{12})$/.exec(event.postback.data);
@@ -185,5 +193,5 @@ var AccountingCore = (function () {
     }
     return [text(HELP)];
   }
-  return {ACCOUNTS,CATEGORIES,text,buttons,money,day,draft,getDraft,confirm,revise,ledger,balance,suggest,preview,paymentMessage,pendingPayments,dueReminders,extractDate,singleMoney,receipt,respond,audit};
+  return {ACCOUNTS,CATEGORIES,PUBLIC_COMMANDS,isPublicEvent,isEditor,text,buttons,money,day,draft,getDraft,confirm,revise,ledger,balance,suggest,preview,paymentMessage,pendingPayments,dueReminders,extractDate,singleMoney,receipt,respond,audit};
 })();

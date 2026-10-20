@@ -128,6 +128,27 @@ class AccountingTests(unittest.TestCase):
         self.assertIn('「未払い」→ 支払予定と「完了」ボタン', messages[0]['text'])
         self.assertEqual(self.store.ledger(), before)
 
+    def test_reader_can_view_public_balance(self):
+        self.bot.handle({'source': {'type': 'user', 'userId': 'reader'}, 'type': 'message',
+                         'webhookEventId': 'public-balance', 'replyToken': 'reader-token',
+                         'message': {'type': 'text', 'text': '団体口座　残高'}})
+        with patch('bot.line_reply') as reply, patch('bot.line_push') as push:
+            self.bot.flush()
+            self.assertIn('10,000', reply.call_args.args[1][0]['text'])
+            push.assert_not_called()
+
+    def test_reader_cannot_complete_payment_or_register_photo(self):
+        ident = self.register('payment', {'会社': 'テスト', '金額': 1000, '期限': '2027-04-10'})
+        self.bot.handle({'source': {'type': 'user', 'userId': 'reader'}, 'type': 'postback',
+                         'webhookEventId': 'denied-payment', 'replyToken': 'reader-token',
+                         'postback': {'data': 'done:' + ident}})
+        with patch('bot.line_image') as image:
+            self.bot.handle({'source': {'type': 'user', 'userId': 'reader'}, 'type': 'message',
+                             'webhookEventId': 'denied-photo', 'replyToken': 'reader-token2',
+                             'message': {'type': 'image', 'id': 'photo'}})
+            image.assert_not_called()
+        self.assertEqual(self.store.db.execute('SELECT status FROM payments WHERE id=?', (ident,)).fetchone()[0], 'pending')
+
     def test_category_only_when_unambiguous(self):
         self.assertEqual(suggest_category('切手代', '支出'), '支．通信費')
         self.assertEqual(suggest_category('部費', '収入'), '収．部費')

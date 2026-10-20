@@ -185,3 +185,53 @@ test('Gmailは放送会以外の接続先を拒否する',()=>{
   api.Gmail={Users:{getProfile:()=>({emailAddress:'other@example.invalid'})}};
   assert.throws(()=>api.gmailWork_(db,{},ctx),/接続先/);
 });
+
+test('公開コマンドは指定された7種類だけで、変更・完了操作を含まない',()=>{
+  for(const command of ['事後申請','事前申請','団体口座','公金口座','団体口座　残高','公金口座 残高','使い方']) {
+    assert.equal(core.isPublicEvent({type:'message',message:{type:'text',text:command}}),true);
+  }
+  for(const command of ['開始残高 {}','修正 abc {}','金額 100','日付 2027-04-02','支払登録 {}','取引 {}','未払い','確認待ち','会計ファイル','科目一覧','ヘルプ','事前申請 修正']) {
+    assert.equal(core.isPublicEvent({type:'message',message:{type:'text',text:command}}),false);
+  }
+  assert.equal(core.isPublicEvent({type:'message',message:{type:'image',id:'photo'}}),false);
+  assert.equal(core.isPublicEvent({type:'postback',postback:{data:'done:000000000001'}}),false);
+  assert.equal(core.isEditor('user',{LINE_ALLOWED_USER_IDS:' other, user '}),true);
+  assert.equal(core.isEditor('',{LINE_ALLOWED_USER_IDS:''}),false);
+});
+
+function webhookBackend(db) {
+  const calls=[],api=backendSandbox(db,(path,body)=>{calls.push({path,body:plain(body)});return response(200);});
+  const settings={GATEWAY_SHARED_SECRET:'shared',LINE_ALLOWED_USER_IDS:'user',LINE_NOTIFICATION_TARGET:'user',TRANSFER_BRANCH:'テスト支店',TRANSFER_ACCOUNT:'0000000'};
+  api.PropertiesService={getScriptProperties:()=>({getProperties:()=>settings})};
+  Object.assign(api.Utilities,{Charset:{UTF_8:'UTF-8'},computeHmacSha256Signature:()=>[1],base64Encode:()=> 'AQ==',getUuid:()=> '12345678-1234-1234-1234-123456789abc'});
+  api.ContentService={MimeType:{JSON:'json'},createTextOutput:s=>({setMimeType:()=>JSON.parse(s)})};
+  api.LockService={getScriptLock:()=>({tryLock:()=>true,releaseLock:()=>{}})};
+  api.testDb=db;vm.runInContext('Database_ = function () { return testDb; };',api);
+  const invoke=event=>api.doPost({postData:{contents:JSON.stringify({timestamp:String(Date.now()),mac:'AQ==',rawBody:JSON.stringify({events:[event]})})}});
+  return {calls,invoke};
+}
+const publicEvent=(id,text)=>({type:'message',webhookEventId:id,replyToken:'reply-token',source:{type:'user',userId:'reader'},message:{type:'text',text}});
+test('未登録の利用者がWebhookで手順と残高を閲覧できる',()=>{
+  const {db}=fixture(),{calls,invoke}=webhookBackend(db);
+  for(const [i,word] of ['事後申請','事前申請','団体口座','公金口座','団体口座　残高','公金口座 残高','使い方'].entries()) {
+    assert.equal(invoke(publicEvent('public-'+i,word)).ok,true);
+  }
+  assert.equal(calls.length,7);
+  assert.ok(calls[4].body.messages[0].text.includes('10,000'));
+  assert.ok(calls[5].body.messages[0].text.includes('20,000'));
+  assert.equal(db.list('transaction').length,0);
+});
+test('未登録利用者は値変更・写真・偽の完了ボタンを操作できない',()=>{
+  const {db,register}=fixture(),payment=register('payment',{会社:'テスト',金額:1000,期限:'2027-04-10'}),{calls,invoke}=webhookBackend(db);
+  invoke(publicEvent('deny-edit','金額 999'));
+  invoke({...publicEvent('deny-photo',''),message:{type:'image',id:'new-photo'}});
+  invoke({...publicEvent('deny-button',''),type:'postback',postback:{data:'done:'+payment},message:undefined});
+  assert.equal(db.get('payment',payment).status,'pending');
+  assert.equal(db.list('photo').length,0);assert.equal(db.list('transaction').length,0);
+  assert.equal(calls.length,3);assert.ok(calls.every(c=>c.body.messages[0].text.includes('会計担当者のみ')));
+});
+test('指定担当者の完了操作は引き続き可能',()=>{
+  const {db,register}=fixture(),payment=register('payment',{会社:'テスト',金額:1000,期限:'2027-04-10'}),{invoke}=webhookBackend(db);
+  assert.equal(invoke({type:'postback',webhookEventId:'editor-button',replyToken:'token',source:{type:'user',userId:'user'},postback:{data:'done:'+payment}}).ok,true);
+  assert.equal(db.get('payment',payment).status,'paid');
+});

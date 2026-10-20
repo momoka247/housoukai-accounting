@@ -15,8 +15,11 @@ GUIDES = {
     '団体口座': '三菱UFJ銀行\n①「通帳記入」\n②「お振込み」\n③ 暗証番号は会計に聞く\n④ 振込したい銀行を選択\n⑤ 金額入力\n⑥ 名前等は登録しない\n⑦ ご利用明細書発行（金額印字）\n⑧「通帳記入」',
 }
 
+PUBLIC_COMMANDS = {'事後申請', '事前申請', '団体口座', '公金口座', '団体口座残高', '公金口座残高', '使い方'}
+
 USAGE = '''放送会 会計アプリの使い方
 
+【全員が使える機能】
 次の言葉をそのまま送ってください。
 
 「事前申請」→ 購入前に申請する手順
@@ -27,14 +30,15 @@ USAGE = '''放送会 会計アプリの使い方
 「団体口座 残高」→ 団体口座の登録済み残高
 「公金口座 残高」→ 公金口座の登録済み残高
 
+【指定の会計担当者のみ】
 明細の写真を送る → 読み取り結果を確認して会計ファイルに登録
 「科目一覧」→ 会計科目の一覧
 「確認待ち」→ 登録前の確認・修正
 「未払い」→ 支払予定と「完了」ボタン
 「会計ファイル」→ Excelファイルを更新
 
-振込が終わったら、対象の通知の「完了」を押してください。
-入力方法の詳しい例は「ヘルプ」と送ってください。'''
+金額・日付の登録や変更、支払完了の操作は担当者のみ行えます。
+担当者向けの詳しい入力例は「ヘルプ」と送ってください。'''
 
 HELP = '''放送会 会計サポート
 事前申請／事後申請／団体口座／公金口座
@@ -80,12 +84,18 @@ class Bot:
     def handle(self, event):
         source = event.get('source', {})
         user = source.get('userId', '')
-        allowed = set(filter(None, os.environ.get('LINE_ALLOWED_USER_IDS', '').split(',')))
-        if user not in allowed:
-            return
+        allowed = {u.strip() for u in os.environ.get('LINE_ALLOWED_USER_IDS', '').split(',') if u.strip()}
         target = source.get('groupId') or source.get('roomId') or user
+        if not target:
+            return
         configured = os.environ.get('LINE_NOTIFICATION_TARGET', '')
-        if source.get('type') != 'user' and target != configured:
+        msg = event.get('message', {})
+        public_event = event.get('type') == 'message' and msg.get('type') == 'text' and re.sub(r'[\s　]+', '', msg.get('text', '')) in PUBLIC_COMMANDS
+        editor = bool(user) and user in allowed
+        if not public_event and (not editor or (source.get('type') != 'user' and target != configured)):
+            if event.get('replyToken') and event.get('type') in ('message', 'postback'):
+                self.queue(target, [text_message('この操作は指定の会計担当者のみ利用できます。担当者は個別トークまたは設定済みの会計用グループで操作してください。\n全員が使える機能は「使い方」で確認できます。')],
+                           'event:' + event['webhookEventId'], event['replyToken'])
             return
         try:
             messages = self.respond(event, user)
